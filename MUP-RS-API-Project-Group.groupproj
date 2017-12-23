@@ -1,0 +1,48 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{B3A411F0-B3B1-400F-BA8C-C49091FFEC41}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="licna-karta\CelikAPIDemo.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="saobracajna-dozvola\eVehicleRegistrationAPIDemo.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="CelikAPIDemo">
+        <MSBuild Projects="licna-karta\CelikAPIDemo.dproj"/>
+    </Target>
+    <Target Name="CelikAPIDemo:Clean">
+        <MSBuild Projects="licna-karta\CelikAPIDemo.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="CelikAPIDemo:Make">
+        <MSBuild Projects="licna-karta\CelikAPIDemo.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="eVehicleRegistrationAPIDemo">
+        <MSBuild Projects="saobracajna-dozvola\eVehicleRegistrationAPIDemo.dproj"/>
+    </Target>
+    <Target Name="eVehicleRegistrationAPIDemo:Clean">
+        <MSBuild Projects="saobracajna-dozvola\eVehicleRegistrationAPIDemo.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="eVehicleRegistrationAPIDemo:Make">
+        <MSBuild Projects="saobracajna-dozvola\eVehicleRegistrationAPIDemo.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="CelikAPIDemo;eVehicleRegistrationAPIDemo"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="CelikAPIDemo:Clean;eVehicleRegistrationAPIDemo:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="CelikAPIDemo:Make;eVehicleRegistrationAPIDemo:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>
