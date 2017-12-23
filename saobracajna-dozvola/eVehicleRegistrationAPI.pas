@@ -20,15 +20,15 @@ uses
 
 const
   SD_REGISDATA_MAX_SIZE = 4096;
-  SD_SIGNATURE_MAX_SIZE	= 1024;
-  SD_AUTHORITY_MAX_SIZE	= 4096;
+  SD_SIGNATURE_MAX_SIZE = 1024;
+  SD_AUTHORITY_MAX_SIZE = 4096;
 
 type
 // ---------------------------------
-//	Structure used to read a registration data file, its
-//	signature and the certificate of the document signer
-//	These three fields shall be used together to  verify
-//	the signature and ensure that the card is not a fake
+//  Structure used to read a registration data file, its
+//  signature and the certificate of the document signer
+//  These three fields shall be used together to  verify
+//  the signature and ensure that the card is not a fake
   groupSD_REGISTRATION_DATA = record
     registrationData: array[0..SD_REGISDATA_MAX_SIZE - 1] of AnsiChar;
     registrationDataSize: LongInt;
@@ -50,7 +50,7 @@ type
   end;
 
 // ---------------------------------
-//	Structure used to read a document data
+//  Structure used to read a document data
   groupSD_DOCUMENT_DATA = record
     stateIssuing: array[0..49] of AnsiChar;
     stateIssuingSize: LongInt;
@@ -84,7 +84,7 @@ type
   end;
 
 // ---------------------------------
-//	Structure used to read a vehicle data
+//  Structure used to read a vehicle data
   groupSD_VEHICLE_DATA = record
     dateOfFirstRegistration: array[0..15] of AnsiChar;
     dateOfFirstRegistrationSize: LongInt;
@@ -163,7 +163,7 @@ type
   end;
 
 // ---------------------------------
-//	Structure used to read a personal data
+//  Structure used to read a personal data
 
   groupSD_PERSONAL_DATA = record
     ownersPersonalNo: array[0..19] of AnsiChar;
@@ -203,30 +203,30 @@ type
 var
 
 // ---------------------------------
-//	Initialization, finalization of library
+//  Initialization, finalization of library
 
   sdStartup: function(apiVersion: Integer): LongInt; cdecl;
   sdCleanup: function(): LongInt; cdecl;
 
 // ---------------------------------
-//	enumeration, selection of card readers
+//  enumeration, selection of card readers
 
   GetReaderName: function(index: LongInt; readerName: PChar; nameSize: PLongInt): LongInt; cdecl;
   SelectReader: function(readerName: PChar): LongInt; cdecl;
 
 // ---------------------------------
-//	new card process request - shall be called prior to read a new card
+//  new card process request - shall be called prior to read a new card
 
   sdProcessNewCard: function(): LongInt; cdecl;
 
 // ---------------------------------
-//	Read data file, signature & cert for the file with given index
-//	(indexes are in 1 up to 3, the 4th file is not signed)
+//  Read data file, signature & cert for the file with given index
+//  (indexes are in 1 up to 3, the 4th file is not signed)
 
   sdReadRegistration: function(pData: PSdRegistrationData; index: LongInt): LongInt; cdecl;
 
 // ---------------------------------
-//	Read Document, Vehicle and Personal Data
+//  Read Document, Vehicle and Personal Data
 
   sdReadDocumentData: function(pData: PSdDocumentData): LongInt; cdecl;
   sdReadVehicleData: function(pData: PSdVehicleData): LongInt; cdecl;

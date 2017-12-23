@@ -93,8 +93,8 @@ type
   tagEID_DOCUMENT_DATA = record
     docRegNo: array[0..EID_MAX_DocRegNo - 1] of AnsiChar;
     docRegNoSize: Integer;
-	  documentType:  array[0..EID_MAX_DocumentType - 1] of AnsiChar;
-	  documentTypeSize: integer;
+    documentType:  array[0..EID_MAX_DocumentType - 1] of AnsiChar;
+    documentTypeSize: integer;
     issuingDate: array[0..EID_MAX_IssuingDate - 1] of AnsiChar;
     issuingDateSize: Integer;
     expiryDate: array[0..EID_MAX_ExpiryDate - 1] of AnsiChar;
@@ -173,10 +173,10 @@ type
     floorSize: Integer;
     apartmentNumber: array[0..EID_MAX_ApartmentNumber - 1] of AnsiChar;
     apartmentNumberSize: Integer;
-	  addressDate: array[0..EID_MAX_AddressDate - 1] of AnsiChar;
-	  addressDateSize: integer;
-	  addressLabel: array[0..EID_MAX_AddressLabel - 1] of AnsiChar;
-	  addressLabelSize: integer;
+    addressDate: array[0..EID_MAX_AddressDate - 1] of AnsiChar;
+    addressDateSize: integer;
+    addressLabel: array[0..EID_MAX_AddressLabel - 1] of AnsiChar;
+    addressLabelSize: integer;
   end;
 
   TNormVariablePersonalData = record
