@@ -2,12 +2,14 @@
 //
 //  DATUM NASTANKA:    03/10/2010
 //
-//  POSLEDNJA PROMENA: 17/10/2014
+//  POSLEDNJA PROMENA: 23/12/2017
 //
 //  OPIS:              Deklaracije za rad sa Celik API (Citac elektronske licne karte)
 //                     za opis funkcija pogledati zvanicno uputstvo dato u CelikApi.pdf
-//                     (CelikApi.h ver1.0.2.1; prevod Igor Savkic)
-//                     (CelikApi.h ver1.2.0.0; update mnenad & Igor Savkic)
+//
+//                     (CelikApi.h ver 1.0.2.1; prevod Igor Savkic)
+//                     (CelikApi.h ver 1.2.0.0; update mnenad & Igor Savkic)
+//                     (CelikApi.h ver 1.2.3.0; update Srdjan Obucina)
 //
 ////////////////////////////////////////////////////////////////////////////
 unit CelikApi;
@@ -196,7 +198,6 @@ type
   TEidVariablePersonalData = tagEID_VARIABLE_PERSONAL_DATA;
   PEidVariablePersonalData = ^TEidVariablePersonalData;
 
-type
   tagEID_PORTRAIT = record
     portrait: array[0..EID_MAX_Portrait - 1] of BYTE;
     portraitSize: Integer;
@@ -207,7 +208,6 @@ type
   TEidPortrait = tagEID_PORTRAIT;
   PEidPortrait = ^TEidPortrait;
 
-type
   tagEID_CERTIFICATE = record
     certificate: array[0..EID_MAX_Certificate - 1] of BYTE;
     certificateSize: Integer;
@@ -226,7 +226,7 @@ var
   EidStartup: function(nApiVersion: Integer): Integer; stdcall;
   EidCleanup: function: Integer; stdcall;
 
-  EidBeginRead: function(szReader: LPCSTR; nCardVersion: PInteger): Integer; stdcall;
+  EidBeginRead: function(szReader: LPCSTR; pnCardVersion: PInteger = nil): Integer; stdcall;
   EidEndRead: function: Integer; stdcall;
 
   EidReadDocumentData: function(pData: PEID_DOCUMENT_DATA): Integer; stdcall;
@@ -238,41 +238,30 @@ var
   EidChangePassword: function(szOldPassword, szNewPassword: LPCSTR; pnTriesLeft: PInteger): Integer; stdcall;
   EidVerifySignature: function(nSignatureID: UINT): Integer; stdcall;
 
-  // Funkcije koje su izbacene u novom APIju
-  {EidReadDocumentDataP: function(pchDocRegNo: PAnsiChar; pnDocRegNoSize: PInteger; pchIssuingDate: PAnsiChar; var pnIssuingDateSize: Integer;
-    pchDocumentType: PAnsiChar; var pnDocumentTypeSize: Integer;
-    pchExpiryDate: PAnsiChar; var pnExpiryDateSize: Integer; pchIssuingAuthority: PAnsiChar; var pnIssuingAuthoritySize: Integer): Integer; stdcall;
+  procedure LoadDll(APathToDll: String = '');
+  procedure UnloadDll();
 
-  EidReadFixedPersonalDataP: function(pchPersonalNumber: PAnsiChar; var pnPersonalNumberSize: Integer; pchSurname: PAnsiChar; var pnSurnameSize: Integer;
-    pchGivenName: PAnsiChar; var pnGivenNameSize: Integer; pchParentGivenName: PAnsiChar; var pnParentGivenNameSize: Integer;
-    pchSex: PAnsiChar; var pnSexSize: Integer; pchPlaceOfBirth: PAnsiChar; var pnPlaceOfBirthSize: Integer; pchStateOfBirth: PAnsiChar; var pnStateOfBirthSize: Integer;
-    pchDateOfBirth: PAnsiChar; var pnDateOfBirthSize: Integer; pchCommunityOfBirth: PAnsiChar; var pnCommunityOfBirthSize: Integer): Integer; stdcall;
-
-  EidReadVariablePersonalDataP: function(pchState: PAnsiChar; var pnStateSize: Integer; pchCommunity: PAnsiChar; var pnCommunitySize: Integer;
-    pchPlace: PAnsiChar; var pnPlaceSize: Integer; pchStreet: PAnsiChar; var pnStreetSize: Integer;
-    pchHouseNumber: PAnsiChar; var pnHouseNumberSize: Integer; pchHouseLetter: PAnsiChar; var pnHouseLetterSize: Integer;
-    pchEntrance: PAnsiChar; var pnEntranceSize: Integer; pchFloor: PAnsiChar; var pnFloorSize: Integer;
-    pchApartmentNumber: PAnsiChar; var pnApartmentNumberSize: Integer; pchAddressDate: PAnsiChar; var pnAddressDateSize: Integer;
-    pchAddressLabel: PAnsiChar; var pnAddressLabelSize: Integer): Integer; stdcall;
-
-  EidReadPortraitP: function(pchPortrait: PByte; var pnPortraitSize: Integer): Integer; stdcall;
-  EidReadCertificateP: function(pchCertificate: PByte; var pnCertificateSize: Integer): Integer; stdcall;}
+  procedure EidToNormDocumentData(AEidData: TEidDocumentData; var ANormData: TNormDocumentData);
+  procedure EidToNormFixedPersonalData(AEidData: TEidFixedPersonalData; var ANormData: TNormFixedPersonalData);
+  procedure EidToNormVariablePersonalData(AEidData: TEidVariablePersonalData; var ANormData: TNormVariablePersonalData);
+  procedure EidToNormPortrait(AEidData: TEidPortrait; AStream: TStream);
 
   function NormReadDocumentData(var AData: TNormDocumentData): Integer;
   function NormReadFixedPersonalData(var AData: TNormFixedPersonalData): Integer;
   function NormReadVariablePersonalData(var AData: TNormVariablePersonalData): Integer;
-  function NormReadPicture(AStream: TStream): Integer;
+  function NormReadPortrait(AStream: TStream): Integer;
 
 implementation
 
 var
   DLLHandle: HMODULE;
 
-procedure LoadDLL;
+procedure LoadDLL(APathToDll: String);
 begin
-  DLLHandle := LoadLibrary('CelikApi.dll');
+  APathToDll := APathToDll + 'CelikApi.dll';
+  DLLHandle := LoadLibrary(PWideChar(APathToDll));
 
-  if DLLHandle <> 0 then
+  if (DLLHandle <> 0) then
   begin
     @EidStartup := GetProcAddress(DLLHandle, 'EidStartup');
     @EidCleanup := GetProcAddress(DLLHandle, 'EidCleanup');
@@ -284,11 +273,15 @@ begin
     @EidReadPortrait := GetProcAddress(DLLHandle, 'EidReadPortrait');
     @EidChangePassword := GetProcAddress(DLLHandle, 'EidChangePassword');
     @EidVerifySignature := GetProcAddress(DLLHandle, 'EidVerifySignature');
+  end;
+end;
 
-    {@EidReadDocumentDataP := GetProcAddress(DLLHandle, 'EidReadDocumentDataP');
-    @EidReadFixedPersonalDataP := GetProcAddress(DLLHandle, 'EidReadFixedPersonalDataP');
-    @EidReadVariablePersonalDataP := GetProcAddress(DLLHandle, 'EidReadVariablePersonalDataP');
-    @EidReadPortraitP := GetProcAddress(DLLHandle, 'EidReadPortraitP');}
+procedure UnloadDLL();
+begin
+  if (DLLHandle <> 0) then
+  begin
+    FreeLibrary(DLLHandle);
+    DLLHandle := 0;
   end;
 end;
 
@@ -298,80 +291,86 @@ var
 begin
   // CelikAPi vraca sve stringove kao AnsiString u UTF8 formatu, konvertujemo ga u WideString
   SetString(Temp, ASource, ASize);
-  ADest := UTF8Decode(Temp);
+  ADest := UTF8ToUnicodeString(Temp);
+end;
+
+procedure EidToNormDocumentData(AEidData: TEidDocumentData; var ANormData: TNormDocumentData);
+begin
+  NormGetData(ANormData.DocRegNo, AEidData.docRegNo, AEidData.docRegNoSize);
+  NormGetData(ANormData.DocumentType, AEidData.documentType, AEidData.documentTypeSize);
+  NormGetData(ANormData.IssuingDate, AEidData.issuingDate, AEidData.issuingDateSize);
+  NormGetData(ANormData.ExpiryDate, AEidData.expiryDate, AEidData.expiryDateSize);
+  NormGetData(ANormData.IssuingAuthority, AEidData.issuingAuthority, AEidData.issuingAuthoritySize);
+end;
+
+procedure EidToNormFixedPersonalData(AEidData: TEidFixedPersonalData; var ANormData: TNormFixedPersonalData);
+begin
+  NormGetData(ANormData.PersonalNumber, AEidData.personalNumber, AEidData.personalNumberSize);
+  NormGetData(ANormData.Surname, AEidData.surname, AEidData.surnameSize);
+  NormGetData(ANormData.GivenName, AEidData.givenName, AEidData.givenNameSize);
+  NormGetData(ANormData.ParentGivenName, AEidData.parentGivenName, AEidData.parentGivenNameSize);
+  NormGetData(ANormData.Sex, AEidData.sex, AEidData.sexSize);
+  NormGetData(ANormData.PlaceOfBirth, AEidData.placeOfBirth, AEidData.placeOfBirthSize);
+  NormGetData(ANormData.StateOfBirth, AEidData.stateOfBirth, AEidData.stateOfBirthSize);
+  NormGetData(ANormData.DateOfBirth, AEidData.dateOfBirth, AEidData.dateOfBirthSize);
+  NormGetData(ANormData.CommunityOfBirth, AEidData.communityOfBirth, AEidData.communityOfBirthSize);
+end;
+
+procedure EidToNormVariablePersonalData(AEidData: TEidVariablePersonalData; var ANormData: TNormVariablePersonalData);
+begin
+  NormGetData(ANormData.State, AEidData.state, AEidData.stateSize);
+  NormGetData(ANormData.Community, AEidData.community, AEidData.communitySize);
+  NormGetData(ANormData.Place, AEidData.place, AEidData.placeSize);
+  NormGetData(ANormData.Street, AEidData.street, AEidData.streetSize);
+  NormGetData(ANormData.HouseNumber, AEidData.houseNumber, AEidData.houseNumberSize);
+  NormGetData(ANormData.HouseLetter, AEidData.houseLetter, AEidData.houseLetterSize);
+  NormGetData(ANormData.Entrance, AEidData.entrance, AEidData.entranceSize);
+  NormGetData(ANormData.Floor, AEidData.floor, AEidData.floorSize);
+  NormGetData(ANormData.ApartmentNumber, AEidData.apartmentNumber, AEidData.apartmentNumberSize);
+  NormGetData(ANormData.AddressDate, AEidData.addressDate, AEidData.addressDateSize);
+  NormGetData(ANormData.AddressLabel, AEidData.addressLabel, AEidData.addressLabelSize);
+end;
+
+procedure EidToNormPortrait(AEidData: TEidPortrait; AStream: TStream);
+begin
+  AStream.Size := AEidData.portraitSize;
+  AStream.Position := 0;
+  AStream.Write(AEidData.portrait, AEidData.portraitSize);
 end;
 
 function NormReadDocumentData(var AData: TNormDocumentData): Integer;
 var
-  Data: TEidDocumentData;
-  Temp: AnsiString;
+  EidData: TEidDocumentData;
 begin
-  ZeroMemory(@Data, SizeOf(TEidDocumentData));
-  EidReadDocumentData(@Data);
-
-  NormGetData(AData.DocRegNo, Data.docRegNo, Data.docRegNoSize);
-  NormGetData(AData.DocumentType, Data.documentType, Data.documentTypeSize);
-  NormGetData(AData.IssuingDate, Data.issuingDate, Data.issuingDateSize);
-  NormGetData(AData.ExpiryDate, Data.expiryDate, Data.expiryDateSize);
-  NormGetData(AData.IssuingAuthority, Data.issuingAuthority, Data.issuingAuthoritySize);
+  ZeroMemory(@EidData, SizeOf(TEidDocumentData));
+  Result := EidReadDocumentData(@EidData);
+  EidToNormDocumentData(EidData, AData);
 end;
 
 function NormReadFixedPersonalData(var AData: TNormFixedPersonalData): Integer;
 var
-  Data: TEidFixedPersonalData;
-  Temp: AnsiString;
+  EidData: TEidFixedPersonalData;
 begin
-  ZeroMemory(@Data, SizeOf(TEidFixedPersonalData));
-  Result := EidReadFixedPersonalData(@Data);
-
-  NormGetData(AData.PersonalNumber, Data.personalNumber, Data.personalNumberSize);
-  NormGetData(AData.Surname, Data.surname, Data.surnameSize);
-  NormGetData(AData.GivenName, Data.givenName, Data.givenNameSize);
-  NormGetData(AData.ParentGivenName, Data.parentGivenName, Data.parentGivenNameSize);
-  NormGetData(AData.Sex, Data.sex, Data.sexSize);
-  NormGetData(AData.PlaceOfBirth, Data.placeOfBirth, Data.placeOfBirthSize);
-  NormGetData(AData.StateOfBirth, Data.stateOfBirth, Data.stateOfBirthSize);
-  NormGetData(AData.DateOfBirth, Data.dateOfBirth, Data.dateOfBirthSize);
-  NormGetData(AData.CommunityOfBirth, Data.communityOfBirth, Data.communityOfBirthSize);
+  ZeroMemory(@EidData, SizeOf(TEidFixedPersonalData));
+  Result := EidReadFixedPersonalData(@EidData);
+  EidToNormFixedPersonalData(EidData, AData);
 end;
 
 function NormReadVariablePersonalData(var AData: TNormVariablePersonalData): Integer;
 var
-  Data: TEidVariablePersonalData;
-  Temp: AnsiString;
+  EidData: TEidVariablePersonalData;
 begin
-  ZeroMemory(@Data, SizeOf(TEidVariablePersonalData));
-  Result := EidReadVariablePersonalData(@Data);
-
-  NormGetData(AData.State, Data.state, Data.stateSize);
-  NormGetData(AData.Community, Data.community, Data.communitySize);
-  NormGetData(AData.Place, Data.place, Data.placeSize);
-  NormGetData(AData.Street, Data.street, Data.streetSize);
-  NormGetData(AData.HouseNumber, Data.houseNumber, Data.houseNumberSize);
-  NormGetData(AData.HouseLetter, Data.houseLetter, Data.houseLetterSize);
-  NormGetData(AData.Entrance, Data.entrance, Data.entranceSize);
-  NormGetData(AData.Floor, Data.floor, Data.floorSize);
-  NormGetData(AData.ApartmentNumber, Data.apartmentNumber, Data.apartmentNumberSize);
-  NormGetData(AData.AddressDate, Data.addressDate, Data.addressDateSize);
-  NormGetData(AData.AddressLabel, Data.addressLabel, Data.addressLabelSize);
+  ZeroMemory(@EidData, SizeOf(TEidVariablePersonalData));
+  Result := EidReadVariablePersonalData(@EidData);
+  EidToNormVariablePersonalData(EidData, AData);
 end;
 
-function NormReadPicture(AStream: TStream): Integer;
+function NormReadPortrait(AStream: TStream): Integer;
 var
-  Temp: TEidPortrait;
+  EidPortrait: TEidPortrait;
 begin
-  Result := EidReadPortrait(@Temp);
-
-  AStream.Size := Temp.portraitSize;
-  AStream.Position := 0;
-  AStream.Write(Temp.portrait, Temp.portraitSize);
+  Result := EidReadPortrait(@EidPortrait);
+  EidToNormPortrait(EidPortrait, AStream);
 end;
-
-initialization
-  LoadDLL;
-
-finalization
-  if DLLHandle <> 0 then
-    FreeLibrary(DLLHandle)
 
 end.

@@ -1,29 +1,48 @@
-unit MainForm;
+﻿unit MainForm;
 
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, TntStdCtrls, ExtCtrls,
-  CelikApi;
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, CelikApi, Vcl.ExtCtrls;
 
 type
   TForm1 = class(TForm)
-    btnCitajKarticu: TButton;
-    btnSaveMemoToFile: TButton;
-    btnLoadFromFile: TButton;
-    mmoPodaci: TTntMemo;
-    imgPic: TImage;
-    procedure btnCitajKarticuClick(Sender: TObject);
+    btnCitajLKEid: TButton;
+    btnCitajLKNorm: TButton;
+    Image1: TImage;
+    btnSacuvajFotografijuUFajl: TButton;
+    btnSacuvajPodatkeUFajl: TButton;
+    btnUcitajPodatkeIzFajla: TButton;
+    mmoPodaci: TMemo;
+    SaveDialog1: TSaveDialog;
+    OpenDialog1: TOpenDialog;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
-    procedure btnSaveMemoToFileClick(Sender: TObject);
-    procedure btnLoadFromFileClick(Sender: TObject);
+    procedure btnCitajLKEidClick(Sender: TObject);
+    procedure btnCitajLKNormClick(Sender: TObject);
+    procedure btnSacuvajFotografijuUFajlClick(Sender: TObject);
+    procedure btnSacuvajPodatkeUFajlClick(Sender: TObject);
+    procedure btnUcitajPodatkeIzFajlaClick(Sender: TObject);
   private
-    procedure DisplayData(const ADocData: TNormDocumentData; AFixPerData: TNormFixedPersonalData; AVarPerData: TNormVariablePersonalData);
-    procedure DisplayPicture(const AImg: TStream);
-  public
+    { Private declarations }
 
+    VerzijaLK: Integer;
+
+    EidDocumentData: TEidDocumentData;
+    EidFixedPersonalData: TEidFixedPersonalData;
+    EidVariablePersonalData: TEidVariablePersonalData;
+    EidPortrait: TEidPortrait;
+
+    NormDocumentData: TNormDocumentData;
+    NormFixedPersonalData: TNormFixedPersonalData;
+    NormVariablePersonalData: TNormVariablePersonalData;
+    NormPortrait: TMemoryStream;
+
+    procedure IzbrisiPodatke();
+    procedure PrikaziPodatke();
+  public
+    { Public declarations }
   end;
 
 var
@@ -36,139 +55,164 @@ implementation
 uses
   Jpeg;
 
-procedure TForm1.btnCitajKarticuClick(Sender: TObject);
-var
-  DocData: TNormDocumentData;
-  FixedData: TNormFixedPersonalData;
-  VariableData: TNormVariablePersonalData;
-  ms: TMemoryStream;
-begin
-  ms := TMemoryStream.Create;
-  try
-    EidBeginRead('', nil);
-    NormReadDocumentData(DocData);
-    NormReadFixedPersonalData(FixedData);
-    NormReadVariablePersonalData(VariableData);
-    NormReadPicture(ms);
-    EidEndRead;
-
-    DisplayData(DocData, FixedData, VariableData);
-    DisplayPicture(ms);
-  finally
-    ms.Free;
-  end;
-end;
-
-procedure TForm1.DisplayData(const ADocData: TNormDocumentData; AFixPerData: TNormFixedPersonalData; AVarPerData: TNormVariablePersonalData);
-begin
-  mmoPodaci.Clear;
-  mmoPodaci.Lines.Add('Reg.no: ' + ADocData.DocRegNo);
-  mmoPodaci.Lines.Add('Tip dokumenta: ' + ADocData.DocumentType);
-  mmoPodaci.Lines.Add('Datum izdavanja: ' + ADocData.IssuingDate);
-  mmoPodaci.Lines.Add('Datum isteka: ' + ADocData.ExpiryDate);
-  mmoPodaci.Lines.Add('Izdaje: ' + ADocData.IssuingAuthority);
-
-  mmoPodaci.Lines.Add('-----------------------------------------');
-  mmoPodaci.Lines.Add('Prezime: ' + AFixPerData.Surname);
-  mmoPodaci.Lines.Add('Ime: ' + AFixPerData.GivenName);
-  mmoPodaci.Lines.Add('Ime roditelja: ' + AFixPerData.ParentGivenName);
-  mmoPodaci.Lines.Add('Pol: ' + AFixPerData.Sex);
-  mmoPodaci.Lines.Add('Mesto ro�enja: ' + AFixPerData.PlaceOfBirth);
-  mmoPodaci.Lines.Add('Dr�ava: ' + AFixPerData.StateOfBirth);
-  mmoPodaci.Lines.Add('Datum ro�enja: ' + AFixPerData.DateOfBirth);
-  mmoPodaci.Lines.Add('Op�tina: ' + AFixPerData.CommunityOfBirth);
-
-  mmoPodaci.Lines.Add('-----------------------------------------');
-  mmoPodaci.Lines.Add('Prebivali�te - oznaka dr�ave: ' + AVarPerData.state);
-  mmoPodaci.Lines.Add('Prebivali�te - op�tina: ' + AVarPerData.community);
-  mmoPodaci.Lines.Add('Prebivali�te - mesto: ' + AVarPerData.place);
-  mmoPodaci.Lines.Add('Prebivali�te - ulica: ' + AVarPerData.street);
-  mmoPodaci.Lines.Add('Prebivali�te - ku�ni broj: ' + AVarPerData.houseNumber);
-  mmoPodaci.Lines.Add('Prebivali�te - slovo uz broj: ' + AVarPerData.houseLetter);
-  mmoPodaci.Lines.Add('Prebivali�te - ulaz: ' + AVarPerData.entrance);
-  mmoPodaci.Lines.Add('Prebivali�te - sprat: ' + AVarPerData.floor);
-  mmoPodaci.Lines.Add('Prebivali�te - broj stana: ' + AVarPerData.apartmentNumber);
-  mmoPodaci.Lines.Add('Prebivali�te - promena datuma: ' + AVarPerData.AddressDate);
-  mmoPodaci.Lines.Add('Prebivali�te - adresna oznaka: ' + AVarPerData.AddressLabel);
-end;
-
 procedure TForm1.FormCreate(Sender: TObject);
 begin
+  CelikApi.LoadDll();
   EidStartup(2);
+  NormPortrait := TMemoryStream.Create;
 end;
 
 procedure TForm1.FormDestroy(Sender: TObject);
 begin
+  NormPortrait.Free;
   EidCleanup;
+  CelikApi.UnloadDll();
 end;
 
-procedure TForm1.btnSaveMemoToFileClick(Sender: TObject);
-var
-  DocData: TEidDocumentData;
-  FixedData: TEidFixedPersonalData;
-  VariableData: TEidVariablePersonalData;
-  f: TFileStream;
+procedure TForm1.btnCitajLKEidClick(Sender: TObject);
 begin
-  FillChar(DocData, SizeOf(TEidDocumentData), 0);
-  FillChar(FixedData, SizeOf(TEidFixedPersonalData), 0);
-  FillChar(VariableData, SizeOf(TEidVariablePersonalData), 0);
+  IzbrisiPodatke();
 
-  EidBeginRead('', nil);
-  EidReadDocumentData(@DocData);
-  EidReadFixedPersonalData(@FixedData);
-  EidReadVariablePersonalData(@VariableData);
+  ZeroMemory(@EidDocumentData, SizeOf(TEidDocumentData));
+  ZeroMemory(@EidFixedPersonalData, SizeOf(TEidFixedPersonalData));
+  ZeroMemory(@EidVariablePersonalData, SizeOf(TEidVariablePersonalData));
+  ZeroMemory(@EidPortrait, SizeOf(TEidPortrait));
+
+  EidBeginRead('', @VerzijaLK);
+  EidReadDocumentData(@EidDocumentData);
+  EidReadFixedPersonalData(@EidFixedPersonalData);
+  EidReadVariablePersonalData(@EidVariablePersonalData);
+  EidReadPortrait(@EidPortrait);
+  EidEndRead();
+
+  EidToNormDocumentData(EidDocumentData, NormDocumentData);
+  EidToNormFixedPersonalData(EidFixedPersonalData, NormFixedPersonalData);
+  EidToNormVariablePersonalData(EidVariablePersonalData, NormVariablePersonalData);
+  EidToNormPortrait(EidPortrait, NormPortrait);
+
+  PrikaziPodatke();
+end;
+
+procedure TForm1.btnCitajLKNormClick(Sender: TObject);
+begin
+  IzbrisiPodatke();
+
+  EidBeginRead('', @VerzijaLK);
+  NormReadDocumentData(NormDocumentData);
+  NormReadFixedPersonalData(NormFixedPersonalData);
+  NormReadVariablePersonalData(NormVariablePersonalData);
+  NormReadPortrait(NormPortrait);
   EidEndRead;
 
-  f := TFileStream.Create('Data.dat', fmCreate);
-  try
-    f.Write(DocData, SizeOf(TEidDocumentData));
-    f.Write(FixedData, SizeOf(TEidFixedPersonalData));
-    f.Write(VariableData, SizeOf(TEidVariablePersonalData));
-  finally
-    f.Free;
-  end;
+  PrikaziPodatke();
 end;
 
-procedure TForm1.btnLoadFromFileClick(Sender: TObject);
-var
-  DocData: TEidDocumentData;
-  FixedData: TEidFixedPersonalData;
-  VariableData: TEidVariablePersonalData;
-  f: TFileStream;
+procedure TForm1.btnSacuvajFotografijuUFajlClick(Sender: TObject);
 begin
-  f := TFileStream.Create('Data.dat', fmOpenRead);
-  try
-    f.Read(DocData, SizeOf(TEidDocumentData));
-    f.Read(FixedData, SizeOf(TEidFixedPersonalData));
-    f.Read(VariableData, SizeOf(TEidVariablePersonalData));
-  finally
-    f.Free;
-  end;
-end;
-
-procedure TForm1.DisplayPicture(const AImg: TStream);
-var
-  img: TJPEGImage;
-  fs: TFileStream;
-begin
-  if AImg.Size > 0 then
+  SaveDialog1.FileName := NormFixedPersonalData.Surname + '-' + NormFixedPersonalData.GivenName + '.jpg';
+  if (SaveDialog1.Execute) then
   begin
-    fs := nil;
-    img := TJPEGImage.Create;
-    try
-      AImg.Position := 0;
-      img.LoadFromStream(AImg);
-      imgPic.Picture.Assign(img);
+    NormPortrait.SaveToFile(SaveDialog1.FileName);
+  end;
+end;
 
-      fs := TFileStream.Create('IDPicture.jpg', fmCreate);
-      AImg.Position := 0;      
-      fs.CopyFrom(AImg, 0);
+procedure TForm1.btnSacuvajPodatkeUFajlClick(Sender: TObject);
+var
+  StrukturaLK: TFileStream;
+begin
+  SaveDialog1.FileName := NormFixedPersonalData.Surname + '-' + NormFixedPersonalData.GivenName + '.dat';
+  if (SaveDialog1.Execute) then
+  begin
+    StrukturaLK := TFileStream.Create(SaveDialog1.FileName, fmCreate);
+    StrukturaLK.Write(EidDocumentData, sizeof(TEidDocumentData));
+    StrukturaLK.Write(EidFixedPersonalData, sizeof(TEidFixedPersonalData));
+    StrukturaLK.Write(EidVariablePersonalData, sizeof(TEidVariablePersonalData));
+    StrukturaLK.Write(EidPortrait, sizeof(TEidPortrait));
+    StrukturaLK.Free;
+  end;
+end;
+
+procedure TForm1.btnUcitajPodatkeIzFajlaClick(Sender: TObject);
+var
+  StrukturaLK: TFileStream;
+begin
+  IzbrisiPodatke();
+
+  OpenDialog1.FileName := NormFixedPersonalData.Surname + '-' + NormFixedPersonalData.GivenName + '.dat';
+  if (OpenDialog1.Execute) then
+  begin
+    StrukturaLK := TFileStream.Create(OpenDialog1.FileName, fmOpenRead);
+    StrukturaLK.Read(EidDocumentData, SizeOf(TEidDocumentData));
+    StrukturaLK.Read(EidFixedPersonalData, SizeOf(TEidFixedPersonalData));
+    StrukturaLK.Read(EidVariablePersonalData, SizeOf(TEidVariablePersonalData));
+    StrukturaLK.Read(EidPortrait, SizeOf(TEidPortrait));
+    StrukturaLK.Free;
+
+    EidToNormDocumentData(EidDocumentData, NormDocumentData);
+    EidToNormFixedPersonalData(EidFixedPersonalData, NormFixedPersonalData);
+    EidToNormVariablePersonalData(EidVariablePersonalData, NormVariablePersonalData);
+    EidToNormPortrait(EidPortrait, NormPortrait);
+
+    PrikaziPodatke();
+  end;
+end;
+
+procedure TForm1.IzbrisiPodatke();
+begin
+  mmoPodaci.Clear;
+  Image1.Picture.Assign(nil);
+end;
+
+procedure TForm1.PrikaziPodatke();
+var
+  PortraitJPG: TJPEGImage;
+begin
+  IzbrisiPodatke();
+
+  mmoPodaci.Lines.Add('Verzija lične karte: ' + IntToStr(VerzijaLK));
+
+  mmoPodaci.Lines.Add('----- Podaci o dokumentu ----------------');
+  mmoPodaci.Lines.Add('Reg.no: ' + NormDocumentData.DocRegNo);
+  mmoPodaci.Lines.Add('Tip dokumenta: ' + NormDocumentData.DocumentType);
+  mmoPodaci.Lines.Add('Datum izdavanja: ' + NormDocumentData.IssuingDate);
+  mmoPodaci.Lines.Add('Datum isteka: ' + NormDocumentData.ExpiryDate);
+  mmoPodaci.Lines.Add('Izdaje: ' + NormDocumentData.IssuingAuthority);
+
+  mmoPodaci.Lines.Add('----- Podaci o osobi, nepromenljivi -----');
+  mmoPodaci.Lines.Add('Matični broj: ' + NormFixedPersonalData.PersonalNumber);
+  mmoPodaci.Lines.Add('Prezime: ' + NormFixedPersonalData.Surname);
+  mmoPodaci.Lines.Add('Ime: ' + NormFixedPersonalData.GivenName);
+  mmoPodaci.Lines.Add('Ime roditelja: ' + NormFixedPersonalData.ParentGivenName);
+  mmoPodaci.Lines.Add('Pol: ' + NormFixedPersonalData.Sex);
+  mmoPodaci.Lines.Add('Mesto rođenja: ' + NormFixedPersonalData.PlaceOfBirth);
+  mmoPodaci.Lines.Add('Država: ' + NormFixedPersonalData.StateOfBirth);
+  mmoPodaci.Lines.Add('Datum rođenja: ' + NormFixedPersonalData.DateOfBirth);
+  mmoPodaci.Lines.Add('Opština: ' + NormFixedPersonalData.CommunityOfBirth);
+
+  mmoPodaci.Lines.Add('----- Podaci o osobi, promenljivi -------');
+  mmoPodaci.Lines.Add('Prebivalište - oznaka države: ' + EidVariablePersonalData.state);
+  mmoPodaci.Lines.Add('Prebivalište - opština: ' + EidVariablePersonalData.community);
+  mmoPodaci.Lines.Add('Prebivalište - mesto: ' + EidVariablePersonalData.place);
+  mmoPodaci.Lines.Add('Prebivalište - ulica: ' + EidVariablePersonalData.street);
+  mmoPodaci.Lines.Add('Prebivalište - kućni broj: ' + EidVariablePersonalData.houseNumber);
+  mmoPodaci.Lines.Add('Prebivalište - slovo uz broj: ' + EidVariablePersonalData.houseLetter);
+  mmoPodaci.Lines.Add('Prebivalište - ulaz: ' + EidVariablePersonalData.entrance);
+  mmoPodaci.Lines.Add('Prebivalište - sprat: ' + EidVariablePersonalData.floor);
+  mmoPodaci.Lines.Add('Prebivalište - broj stana: ' + EidVariablePersonalData.apartmentNumber);
+  mmoPodaci.Lines.Add('Prebivalište - promena datuma: ' + EidVariablePersonalData.AddressDate);
+  mmoPodaci.Lines.Add('Prebivalište - adresna oznaka: ' + EidVariablePersonalData.AddressLabel);
+
+  if NormPortrait.Size > 0 then
+  begin
+    PortraitJPG := TJPEGImage.Create;
+    try
+      NormPortrait.Position := 0;
+      PortraitJPG.LoadFromStream(NormPortrait);
+      Image1.Picture.Assign(PortraitJPG);
     finally
-      img.Free;
-      fs.Free;
+      PortraitJPG.Free;
     end;
   end;
 end;
 
 end.
-
