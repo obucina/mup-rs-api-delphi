@@ -9,7 +9,7 @@ Testirano na verziji Delphi 10.2 Update 1
 ## Poznati problemi
 
 ### API za čitanje elektronske lične karte
-Demo aplikacije ne pokriva sve funkcionalnosti biblioteke
+Demo aplikacija ne pokriva sve funkcionalnosti biblioteke
 
 ### API za čitanje elektronske saobraćajne dozvole
 Nema poznatih problema
